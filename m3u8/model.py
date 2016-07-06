@@ -576,6 +576,7 @@ class IFramePlaylist(BasePathMixin):
     def __init__(self, base_uri, uri, iframe_stream_info):
         self.uri = uri
         self.base_uri = base_uri
+        self._output_absolute_uris = False
 
         resolution = iframe_stream_info.get('resolution')
         if resolution is not None:
