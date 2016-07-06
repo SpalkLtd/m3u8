@@ -663,7 +663,7 @@ class Media(BasePathMixin):
         self.instream_id = instream_id
         self.characteristics = characteristics
         self.extras = extras
-        self._output_absolute_uris
+        self._output_absolute_uris = False
 
     def dumps(self):
         media_out = []
