@@ -286,6 +286,15 @@ class M3U8(object):
             if error.errno != errno.EEXIST:
                 raise
 
+    @property
+    def duration(self):
+        return sum(map(lambda x:(self.duration), self.segments))
+
+    @duration.setter
+    def duration(self, new_value):
+        pass
+
+
 class BasePathMixin(object):
 
     @property
