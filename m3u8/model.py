@@ -521,7 +521,8 @@ class Playlist(BasePathMixin):
             average_bandwidth=stream_info.get('average_bandwidth'),
             program_id=stream_info.get('program_id'),
             resolution=resolution_pair,
-            codecs=stream_info.get('codecs')
+            codecs=stream_info.get('codecs'),
+            closed_captions=stream_info.get('closed_captions')
         )
         self.media = []
         for media_type in ('audio', 'video', 'subtitles'):
@@ -545,6 +546,10 @@ class Playlist(BasePathMixin):
             stream_inf.append('RESOLUTION=' + res)
         if self.stream_info.codecs:
             stream_inf.append('CODECS=' + quoted(self.stream_info.codecs))
+        if self.stream_info.closed_captions == 'NONE':
+            stream_inf.append('CLOSED-CAPTIONS=NONE')
+        elif self.stream_info.closed_captions:
+            stream_inf.append('CLOSED-CAPTIONS=' + quoted(self.stream_info.closed_captions))
 
         media_types = []
         for media in self.media:
@@ -590,7 +595,8 @@ class IFramePlaylist(BasePathMixin):
             average_bandwidth=None,
             program_id=iframe_stream_info.get('program_id'),
             resolution=resolution_pair,
-            codecs=iframe_stream_info.get('codecs')
+            codecs=iframe_stream_info.get('codecs'),
+            closed_captions=iframe_stream_info.get('closed_captions')
         )
 
     def __str__(self):
@@ -620,7 +626,7 @@ class IFramePlaylist(BasePathMixin):
 
 StreamInfo = namedtuple(
     'StreamInfo',
-    ['bandwidth', 'average_bandwidth', 'program_id', 'resolution', 'codecs']
+    ['bandwidth', 'average_bandwidth', 'program_id', 'resolution', 'codecs','closed_captions']
 )
 
 class Media(BasePathMixin):

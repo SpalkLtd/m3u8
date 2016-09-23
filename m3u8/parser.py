@@ -175,7 +175,7 @@ def _parse_attribute_list(prefix, line, atribute_parser):
     for param in params:
         name, value = param.split('=', 1)
         name = normalize_attribute(name)
-
+        
         if name in atribute_parser:
             value = atribute_parser[name](value)
 
@@ -186,7 +186,7 @@ def _parse_attribute_list(prefix, line, atribute_parser):
 def _parse_stream_inf(line, data, state):
     data['is_variant'] = True
     data['media_sequence'] = None
-    atribute_parser = remove_quotes_parser('codecs', 'audio', 'video', 'subtitles')
+    atribute_parser = remove_quotes_parser('codecs', 'audio', 'video', 'subtitles','closed_captions')
     atribute_parser["program_id"] = int
     atribute_parser["bandwidth"] = int
     atribute_parser["average_bandwidth"] = int

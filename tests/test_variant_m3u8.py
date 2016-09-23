@@ -129,3 +129,7 @@ http://example.com/high.m3u8
 def test_variant_playlist_with_multiple_media():
     variant_m3u8 = m3u8.loads(playlists.MULTI_MEDIA_PLAYLIST)
     assert variant_m3u8.dumps() == playlists.MULTI_MEDIA_PLAYLIST
+
+def test_variant_playlist_with_none_closed_captions():
+    variant_m3u8 = m3u8.loads(playlists.MULTI_MEDIA_PLAYLIST_WITH_NONE_CLOSED_CAPTIONS)
+    assert variant_m3u8.dumps() == playlists.MULTI_MEDIA_PLAYLIST_WITH_NONE_CLOSED_CAPTIONS
