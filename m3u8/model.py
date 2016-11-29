@@ -108,6 +108,10 @@ class M3U8(object):
         Returns true if EXT-X-INDEPENDENT-SEGMENTS tag present in M3U8.
         https://tools.ietf.org/html/draft-pantos-http-live-streaming-13#section-3.4.16
 
+        `output_absolute_uris`
+        Flag to toggle output of absolute URIs of segments in playlist.
+        Defaults to false
+
     '''
 
     simple_attributes = (
@@ -136,6 +140,7 @@ class M3U8(object):
 
         self._initialize_attributes()
         self.base_path = base_path
+        self._output_absolute_uris = False
 
     def _initialize_attributes(self):
         self.key = Key(base_uri=self.base_uri, **self.data['key']) if 'key' in self.data else None
@@ -198,6 +203,17 @@ class M3U8(object):
         self.media.base_path = self.base_path
         self.segments.base_path = self.base_path
         self.playlists.base_path = self.base_path
+
+    @property
+    def output_absolute_uris(self):
+        return self._output_absolute_uris
+
+    @output_absolute_uris.setter
+    def output_absolute_uris(self, new_value):
+        self._output_absolute_uris = new_value
+        self.media.output_absolute_uris = new_value
+        self.playlists.output_absolute_uris = new_value
+        self.segments.output_absolute_uris = new_value
 
     def add_playlist(self, playlist):
         self.is_variant = True
@@ -270,6 +286,15 @@ class M3U8(object):
             if error.errno != errno.EEXIST:
                 raise
 
+    @property
+    def duration(self):
+        return sum(map(lambda x:(self.duration), self.segments))
+
+    @duration.setter
+    def duration(self, new_value):
+        pass
+
+
 class BasePathMixin(object):
 
     @property
@@ -293,6 +318,17 @@ class BasePathMixin(object):
             self.uri = "%s/%s" % (newbase_path, self.uri)
         self.uri = self.uri.replace(self.base_path, newbase_path)
 
+    @property
+    def output_absolute_uris(self):
+        if self._output_absolute_uris is None:
+            return False
+        else:
+            return self._output_absolute_uris
+
+    @output_absolute_uris.setter
+    def output_absolute_uris(self, new_value):
+        self._output_absolute_uris = new_value
+
 class GroupedBasePathMixin(object):
 
     def _set_base_uri(self, new_base_uri):
@@ -306,6 +342,13 @@ class GroupedBasePathMixin(object):
             item.base_path = newbase_path
 
     base_path = property(None, _set_base_path)
+
+    def _set_output_absolute_uris(self,new_value):
+        for item in self:
+            item.output_absolute_uris = new_value
+
+    output_absolute_uris = property(False,_set_output_absolute_uris)
+
 
 class Segment(BasePathMixin):
     '''
@@ -352,6 +395,7 @@ class Segment(BasePathMixin):
         self.discontinuity = discontinuity
         self.cue_out = cue_out
         self.key = Key(base_uri=base_uri,**key) if key else None
+        self._output_absolute_uris = False
 
 
     def dumps(self, last_segment):
@@ -374,7 +418,8 @@ class Segment(BasePathMixin):
 
         if self.byterange:
             output.append('#EXT-X-BYTERANGE:%s\n' % self.byterange)
-
+        if self.output_absolute_uris:
+            output.append(self.base_uri)
         output.append(self.uri)
 
         return ''.join(output)
@@ -421,13 +466,17 @@ class Key(BasePathMixin):
         self.keyformat = keyformat
         self.keyformatversions = keyformatversions
         self.base_uri = base_uri
+        self._output_absolute_uris = False
 
     def __str__(self):
         output = [
             'METHOD=%s' % self.method,
             ]
         if self.uri:
-            output.append('URI="%s"' % self.uri)
+            if self.output_absolute_uris:
+                output.append('URI="%s"' % self.base_uri + self.uri)
+            else:
+                output.append('URI="%s"' % self.uri)
         if self.iv:
             output.append('IV=%s' % self.iv)
         if self.keyformat:
@@ -466,6 +515,7 @@ class Playlist(BasePathMixin):
     def __init__(self, uri, stream_info, media, base_uri):
         self.uri = uri
         self.base_uri = base_uri
+        self._output_absolute_uris = False
 
         resolution = stream_info.get('resolution')
         if resolution != None:
@@ -480,7 +530,8 @@ class Playlist(BasePathMixin):
             average_bandwidth=stream_info.get('average_bandwidth'),
             program_id=stream_info.get('program_id'),
             resolution=resolution_pair,
-            codecs=stream_info.get('codecs')
+            codecs=stream_info.get('codecs'),
+            closed_captions=stream_info.get('closed_captions')
         )
         self.media = []
         for media_type in ('audio', 'video', 'subtitles'):
@@ -504,12 +555,24 @@ class Playlist(BasePathMixin):
             stream_inf.append('RESOLUTION=' + res)
         if self.stream_info.codecs:
             stream_inf.append('CODECS=' + quoted(self.stream_info.codecs))
+        if self.stream_info.closed_captions == 'NONE':
+            stream_inf.append('CLOSED-CAPTIONS=NONE')
+        elif self.stream_info.closed_captions:
+            stream_inf.append('CLOSED-CAPTIONS=' + quoted(self.stream_info.closed_captions))
 
+        media_types = []
         for media in self.media:
-            media_type = media.type.upper()
-            stream_inf.append('%s="%s"' % (media_type, media.group_id))
-
-        return '#EXT-X-STREAM-INF:' + ','.join(stream_inf) + '\n' + self.uri
+            if media.type in media_types:
+                continue
+            else:
+                media_types += [media.type]
+                media_type = media.type.upper()
+                stream_inf.append('%s="%s"' % (media_type, media.group_id))
+        if self.output_absolute_uris:
+            return '#EXT-X-STREAM-INF:' + ','.join(stream_inf) + '\n' + self.base_uri + self.uri
+        else:
+            return '#EXT-X-STREAM-INF:' + ','.join(stream_inf) + '\n' + self.uri
+        
 
 class IFramePlaylist(BasePathMixin):
     '''
@@ -527,6 +590,7 @@ class IFramePlaylist(BasePathMixin):
     def __init__(self, base_uri, uri, iframe_stream_info):
         self.uri = uri
         self.base_uri = base_uri
+        self._output_absolute_uris = False
 
         resolution = iframe_stream_info.get('resolution')
         if resolution is not None:
@@ -540,7 +604,8 @@ class IFramePlaylist(BasePathMixin):
             average_bandwidth=None,
             program_id=iframe_stream_info.get('program_id'),
             resolution=resolution_pair,
-            codecs=iframe_stream_info.get('codecs')
+            codecs=iframe_stream_info.get('codecs'),
+            closed_captions=iframe_stream_info.get('closed_captions')
         )
 
     def __str__(self):
@@ -559,13 +624,18 @@ class IFramePlaylist(BasePathMixin):
             iframe_stream_inf.append('CODECS=' +
                                      quoted(self.iframe_stream_info.codecs))
         if self.uri:
-            iframe_stream_inf.append('URI=' + quoted(self.uri))
+            if self.output_absolute_uris:
+                iframe_stream_inf.append('URI=' + quoted(self.base_uri + self.uri))
+            else:
+                iframe_stream_inf.append('URI=' + quoted(self.uri))
 
         return '#EXT-X-I-FRAME-STREAM-INF:' + ','.join(iframe_stream_inf)
 
+        
+
 StreamInfo = namedtuple(
     'StreamInfo',
-    ['bandwidth', 'average_bandwidth', 'program_id', 'resolution', 'codecs']
+    ['bandwidth', 'average_bandwidth', 'program_id', 'resolution', 'codecs','closed_captions']
 )
 
 class Media(BasePathMixin):
@@ -609,12 +679,16 @@ class Media(BasePathMixin):
         self.instream_id = instream_id
         self.characteristics = characteristics
         self.extras = extras
+        self._output_absolute_uris = False
 
     def dumps(self):
         media_out = []
 
         if self.uri:
-            media_out.append('URI=' + quoted(self.uri))
+            if self.output_absolute_uris:
+                media_out.append('URI=' + quoted(self.base_uri + self.uri))
+            else:
+                media_out.append('URI=' + quoted(self.uri))
         if self.type:
             media_out.append('TYPE=' + self.type)
         if self.group_id:
