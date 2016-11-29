@@ -288,7 +288,7 @@ class M3U8(object):
 
     @property
     def duration(self):
-        return sum(map(lambda x:(self.duration), self.segments))
+        return sum(map(lambda x:(x.duration), self.segments))
 
     @duration.setter
     def duration(self, new_value):
