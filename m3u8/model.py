@@ -418,7 +418,7 @@ class Segment(BasePathMixin):
 
         if self.byterange:
             output.append('#EXT-X-BYTERANGE:%s\n' % self.byterange)
-        if self.output_absolute_uris:
+        if self.output_absolute_uris and not self.uri.lower().startswith('http'):
             output.append(self.base_uri)
         output.append(self.uri)
 
@@ -473,7 +473,7 @@ class Key(BasePathMixin):
             'METHOD=%s' % self.method,
             ]
         if self.uri:
-            if self.output_absolute_uris:
+            if self.output_absolute_uris and not self.uri.lower().startswith('http'):
                 output.append('URI="%s"' % self.base_uri + self.uri)
             else:
                 output.append('URI="%s"' % self.uri)
@@ -568,7 +568,7 @@ class Playlist(BasePathMixin):
                 media_types += [media.type]
                 media_type = media.type.upper()
                 stream_inf.append('%s="%s"' % (media_type, media.group_id))
-        if self.output_absolute_uris:
+        if self.output_absolute_uris and not self.uri.lower().startswith('http'):
             return '#EXT-X-STREAM-INF:' + ','.join(stream_inf) + '\n' + self.base_uri + self.uri
         else:
             return '#EXT-X-STREAM-INF:' + ','.join(stream_inf) + '\n' + self.uri
@@ -624,7 +624,7 @@ class IFramePlaylist(BasePathMixin):
             iframe_stream_inf.append('CODECS=' +
                                      quoted(self.iframe_stream_info.codecs))
         if self.uri:
-            if self.output_absolute_uris:
+            if self.output_absolute_uris and not self.uri.lower().startswith('http'):
                 iframe_stream_inf.append('URI=' + quoted(self.base_uri + self.uri))
             else:
                 iframe_stream_inf.append('URI=' + quoted(self.uri))
@@ -685,7 +685,7 @@ class Media(BasePathMixin):
         media_out = []
 
         if self.uri:
-            if self.output_absolute_uris:
+            if self.output_absolute_uris and not self.uri.lower().startswith('http'):
                 media_out.append('URI=' + quoted(self.base_uri + self.uri))
             else:
                 media_out.append('URI=' + quoted(self.uri))
