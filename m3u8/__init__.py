@@ -11,8 +11,8 @@ import posixpath
 
 try:
     import urlparse as url_parser
-    import urllib2
-    urlopen = urllib2.urlopen
+    import requests
+    urlopen = requests.get
 except ImportError:
     import urllib.parse as url_parser
     from urllib.request import urlopen as url_opener
@@ -53,7 +53,7 @@ def _load_from_uri(uri):
     return M3U8(content, base_uri=base_uri)
 
 def _url_for(uri):
-    return urlopen(uri).geturl()
+    return urlopen(uri).url
 
 def _parsed_url(url):
     parsed_url = url_parser.urlparse(url)
@@ -62,7 +62,7 @@ def _parsed_url(url):
     return url_parser.urljoin(prefix, base_path)
 
 def _read_python2x(resource):
-    return resource.read().strip()
+    return resource.text.strip()
 
 def _read_python3x(resource):
     return  resource.read().decode(resource.headers.get_content_charset(failobj="utf-8"))
