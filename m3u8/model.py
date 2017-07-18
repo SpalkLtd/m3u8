@@ -131,7 +131,6 @@ class M3U8(object):
     def __init__(self, content=None, base_path=None, base_uri=None, strict=False):
         if content is not None:
             self.data = parser.parse(content, strict)
-            print self.data
         else:
             self.data = {}
         self._base_uri = base_uri
@@ -148,12 +147,8 @@ class M3U8(object):
         self.segments = SegmentList([ Segment(base_uri=self.base_uri, **params)
                                       for params in self.data.get('segments', []) ])
 
-        print self.data
         for attr, param in self.simple_attributes:
-            print attr, param, self.data.get(param)
             setattr(self, attr, self.data.get(param))
-        print self._media_sequence
-        print self.media_sequence
 
         self.files = []
         if self.key:
