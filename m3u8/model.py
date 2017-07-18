@@ -217,7 +217,7 @@ class M3U8(object):
 
     @property
     def media_sequence(self):
-        return str(self._media_sequence)
+        return int(self._media_sequence)
 
     @media_sequence.setter
     def media_sequence(self, new_value):
