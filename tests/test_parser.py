@@ -172,3 +172,16 @@ def test_should_parse_VERSION():
 def test_should_parse_program_date_time_from_playlist():
     data = m3u8.parse(playlists.SIMPLE_PLAYLIST_WITH_PROGRAM_DATE_TIME)
     assert cast_date_time('2014-08-13T13:36:33+00:00') == data['program_date_time']
+
+def test_should_parse_media_sequence_to_segments():
+    data = m3u8.parse(playlists.SLIDING_WINDOW_PLAYLIST)
+    seg_med_seq = 2680
+    for seg in data['segments']:
+        assert(seg['media_sequence'] == seg_med_seq)
+        seg_med_seq+=1
+
+    data = m3u8.parse(playlists.DISCONTINUITY_PLAYLIST_WITH_PROGRAM_DATE_TIME)
+    seg_med_seq = 50116
+    for seg in data['segments']:
+        assert(seg['media_sequence'] == seg_med_seq)
+        seg_med_seq+=1

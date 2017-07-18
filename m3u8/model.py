@@ -120,7 +120,7 @@ class M3U8(object):
         ('is_endlist',       'is_endlist'),
         ('is_i_frames_only', 'is_i_frames_only'),
         ('target_duration',  'targetduration'),
-        ('media_sequence',   'media_sequence'),
+        ('_media_sequence',   'media_sequence'),
         ('program_date_time',   'program_date_time'),
         ('is_independent_segments', 'is_independent_segments'),
         ('version',          'version'),
@@ -131,6 +131,7 @@ class M3U8(object):
     def __init__(self, content=None, base_path=None, base_uri=None, strict=False):
         if content is not None:
             self.data = parser.parse(content, strict)
+            print self.data
         else:
             self.data = {}
         self._base_uri = base_uri
@@ -147,8 +148,12 @@ class M3U8(object):
         self.segments = SegmentList([ Segment(base_uri=self.base_uri, **params)
                                       for params in self.data.get('segments', []) ])
 
+        print self.data
         for attr, param in self.simple_attributes:
+            print attr, param, self.data.get(param)
             setattr(self, attr, self.data.get(param))
+        print self._media_sequence
+        print self.media_sequence
 
         self.files = []
         if self.key:
@@ -215,6 +220,15 @@ class M3U8(object):
         self.playlists.output_absolute_uris = new_value
         self.segments.output_absolute_uris = new_value
 
+    @property
+    def media_sequence(self):
+        return str(self._media_sequence)
+
+    @media_sequence.setter
+    def media_sequence(self, new_value):
+        self._media_sequence = new_value
+        self.segments.set_med_seq(new_value)
+
     def add_playlist(self, playlist):
         self.is_variant = True
         self.playlists.append(playlist)
@@ -238,8 +252,8 @@ class M3U8(object):
         output = ['#EXTM3U']
         if self.is_independent_segments:
             output.append('#EXT-X-INDEPENDENT-SEGMENTS')
-        if self.media_sequence:
-            output.append('#EXT-X-MEDIA-SEQUENCE:' + str(self.media_sequence))
+        if self._media_sequence:
+            output.append('#EXT-X-MEDIA-SEQUENCE:' + str(self._media_sequence))
         if self.allow_cache:
             output.append('#EXT-X-ALLOW-CACHE:' + self.allow_cache.upper())
         if self.version:
@@ -382,10 +396,13 @@ class Segment(BasePathMixin):
 
     `key`
       Key used to encrypt the segment (EXT-X-KEY)
+
+    `media_sequence`
+      Media Sequence number attributed to this segment.
     '''
 
     def __init__(self, uri, base_uri, program_date_time=None, duration=None,
-                 title=None, byterange=None, cue_out=False, discontinuity=False, key=None):
+                 title=None, byterange=None, cue_out=False, discontinuity=False, key=None, media_sequence=None):
         self.uri = uri
         self.duration = duration
         self.title = title
@@ -393,6 +410,10 @@ class Segment(BasePathMixin):
         self.byterange = byterange
         self.program_date_time = program_date_time
         self.discontinuity = discontinuity
+        if not media_sequence is None:
+            self.media_sequence = media_sequence
+        else:
+            self.media_sequence = 0
         self.cue_out = cue_out
         self.key = Key(base_uri=base_uri,**key) if key else None
         self._output_absolute_uris = False
@@ -437,6 +458,53 @@ class SegmentList(list, GroupedBasePathMixin):
           output.append(segment.dumps(last_segment))
           last_segment = segment
         return '\n'.join(output)
+
+    def append(self, segment):
+        if not isinstance(segment, Segment):
+            raise TypeError, 'appended item is not of type Segment'
+        try:
+            segment.media_sequence = self[-1].media_sequence + 1
+        except IndexError:
+            # do nothing if there is no other segments on the playlist
+            # Assume the segment already has the correct media_sequence
+            pass
+        super(SegmentList ,self).append(segment)
+
+    def pop(self,index=-1):
+        # If its not the last one we need to decrement all the values after this one so they still match the original
+        # media_sequence
+        if not index == -1:
+            for x in self[index+1:]:
+                x.media_sequence -= 1
+        return super(SegmentList,self).pop(index)
+
+    def insert(self,index,segment):
+        if not isinstance(segment, Segment):
+            raise TypeError, 'inserted item is not of type Segment'
+        try:
+            # Set the media sequence to be correct relative to the start of this playlist
+            segment.media_sequence = self[0].media_sequence + index
+            # Increment all the media_sequences after this has been inserted
+            for x in self[index:]:
+                x.media_sequence += 1
+        except IndexError: # There was nothing in the playlist
+            pass
+        # Actually insert the segment into the list
+        super(SegmentList ,self).insert(index,segment)
+
+    def extend(self,segmentlist):
+        # Ensure the media_sequence logic is used
+        for seg in segmentlist:
+            self.append(seg)
+
+    def set_med_seq(self,media_sequence):
+        try:
+            offset = media_sequence - self[0].media_sequence
+            # Increment all the media_sequences after this has been inserted
+            for x in self:
+                x.media_sequence += offset
+        except IndexError: # There was nothing in the segment list - do nothing?
+            pass
 
     @property
     def uri(self):

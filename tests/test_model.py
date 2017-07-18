@@ -10,6 +10,7 @@ import arrow
 import datetime
 import m3u8
 import playlists
+import copy
 from m3u8.model import Segment
 
 def test_target_duration_attribute():
@@ -554,6 +555,52 @@ def test_m3u8_should_propagate_base_uri_to_key():
     obj.base_uri = '/any/where/'
     assert '../key.bin' == obj.key.uri
     assert '/any/key.bin' == obj.key.absolute_uri
+
+def test_segmentlist_pop_should_update_segment_media_sequences():
+    data = m3u8.loads(playlists.SLIDING_WINDOW_PLAYLIST)
+    data.segments.pop(0)
+    seg_med_seq = int(data.media_sequence)
+    for seg in data.segments:
+        assert(seg.media_sequence == seg_med_seq)
+        seg_med_seq += 1
+
+
+def test_segmentlist_insert_should_update_segment_media_sequences():
+    data = m3u8.loads(playlists.SLIDING_WINDOW_PLAYLIST)
+    new_segment = copy.deepcopy(data.segments[0])
+    data.segments.insert(1,new_segment)
+    seg_med_seq = int(data.media_sequence)
+    for seg in data.segments:
+        assert(seg.media_sequence == seg_med_seq)
+        seg_med_seq += 1
+
+def test_segmentlist_extend_should_update_segment_media_sequences():
+    data = m3u8.loads(playlists.SLIDING_WINDOW_PLAYLIST)
+    new_segments = copy.deepcopy(data.segments)
+    data.segments.extend(new_segments)
+    seg_med_seq = int(data.media_sequence)
+    for seg in data.segments:
+        assert(seg.media_sequence == seg_med_seq)
+        seg_med_seq += 1
+
+def test_segmentlist_append_should_update_segment_media_sequence():
+    data = m3u8.loads(playlists.SLIDING_WINDOW_PLAYLIST)
+    new_segment = copy.deepcopy(data.segments[0])
+    new_segment.media_sequence = 0
+    data.segments.append(new_segment)
+    seg_med_seq = int(data.media_sequence)
+    for seg in data.segments:
+        assert(seg.media_sequence == seg_med_seq)
+        seg_med_seq += 1
+
+
+def test_m3u8_set_media_sequence_should_update_segment_media_sequences():
+    data = m3u8.loads(playlists.SLIDING_WINDOW_PLAYLIST)
+    data.media_sequence = 123
+    seg_med_seq = int(data.media_sequence)
+    for seg in data.segments:
+        assert(seg.media_sequence == seg_med_seq)
+        seg_med_seq += 1
 
 
 # custom asserts

@@ -166,6 +166,7 @@ def _parse_ts_chunk(line, data, state):
     segment['discontinuity'] = state.pop('discontinuity', False)
     if state.get('current_key'):
       segment['key'] = state['current_key']
+    segment['media_sequence'] = int(data['media_sequence']) + len(data['segments'])
     data['segments'].append(segment)
 
 def _parse_attribute_list(prefix, line, atribute_parser):
